@@ -1,8 +1,7 @@
 const express = require('express');
 const pino = require('pino-http');
 const cors = require('cors');
-const browserRoutes = require('./routes/postBrowserRoutes');
-const apiRoutes = require('./routes/postAPIRoutes');
+const apiRoutes = require('./routes/postRoutes');
 const path = require('path');
 const getEnvVar = require('./utils/getEnvVar');
 const PORT = Number(getEnvVar('PORT', '2000'));
@@ -33,11 +32,10 @@ const startServer = () => {
     }),
   );
   //router
-  app.use('/', browserRoutes);
-  app.use('/api', apiRoutes);
+  app.use('/', apiRoutes);
 
   //errors
-  app.use('/api/*', (req, res, next) => {
+  app.use('*', (req, res, next) => {
     res.status(404).json({
       message: 'Not found',
     });

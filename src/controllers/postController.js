@@ -1,103 +1,87 @@
 const Post = require('../models/postModel');
 const Comment = require('../models/commentModel');
 
-const getFormattedPosts = () => {
-  return Post.find()
-    .sort({ createdAt: -1 })
-    .populate('comments', '_id userComment')
-    .then((result) => {
-      return result.map((post) => ({
-        // Додано return перед result.map
-        ...post._doc,
-        // comments: post.comments,
-        createdAt: new Intl.DateTimeFormat('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        }).format(post.createdAt),
-      }));
-    });
+const getPosts = async (req, res) => {
+  try {
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate('comments', '_id userComment');
+
+    const formattedPosts = posts.map((post) => ({
+      ...post._doc,
+      createdAt: new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(post.createdAt),
+    }));
+
+    res.json({ success: true, data: formattedPosts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch posts' });
+  }
 };
 
-const homePage = (req, res) => {
-  getFormattedPosts()
-    .then((formattedData) => {
-      res.render('index', { data: formattedData || [], errors: '' });
-    })
-    .catch((err) => {
-      res.status(500).send('Internal Server Error');
-    });
+const addPost = async (req, res) => {
+  try {
+    const { userName, userMessage } = req.body;
+    if (!userName || !userMessage) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing required fields' });
+    }
+
+    const newPost = new Post({ userName, userMessage });
+    await newPost.save();
+    res.status(201).json({ success: true, data: newPost });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to create post' });
+  }
 };
 
-const addPost = (req, res) => {
-  const addNewPost = new Post(req.body);
+const deletePost = async (req, res) => {
+  try {
+    const deletedPost = await Post.findByIdAndDelete(req.params.id);
+    if (!deletedPost) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Post not found' });
+    }
 
-  addNewPost
-    .save()
-    .then(() => {
-      res.redirect('/');
-    })
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return getFormattedPosts().then((formattedData) => {
-          res.render('index', { data: formattedData, errors: err.errors });
-        });
-      }
-      res.status(500).send('Internal Server Error');
-    });
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to delete post' });
+  }
 };
 
-const deletePost = (req, res) => {
-  Post.findByIdAndDelete(req.params.id)
-    .then(() => {
-      res.redirect('/');
-    })
-    .catch((err) => {
-      console.log(err);
+const addComment = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userComment } = req.body;
+
+    if (!userComment) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Comment cannot be empty' });
+    }
+
+    const newComment = new Comment({ userComment, post: postId });
+    const savedComment = await newComment.save();
+
+    await Post.findByIdAndUpdate(postId, {
+      $push: { comments: savedComment._id },
     });
-};
 
-const addComment = (req, res) => {
-  let postId = req.params.postId;
-  if (req.body.userComment !== '' && postId) {
-    let commentData = {
-      ...req.body,
-      post: postId,
-    };
-    const addNewComment = new Comment(commentData);
-
-    addNewComment
-      .save()
-      .then((savedComment) => {
-        Post.findById(postId)
-          .then((postInfo) => {
-            console.log(postInfo);
-            postInfo.comments.push(savedComment._id);
-            postInfo
-              .save()
-              .then(() => {
-                res.redirect('/');
-              })
-              .catch((err) => {
-                console.log(err);
-              });
-          })
-
-          .catch((err) => {
-            console.log(err);
-          });
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    res.status(201).json({ success: true, data: savedComment });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to add comment' });
   }
 };
 
 const notFoundPage = (req, res) => {};
 
 module.exports = {
-  getFormattedPosts,
-  homePage,
+  getPosts,
   addPost,
   deletePost,
   addComment,
