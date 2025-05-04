@@ -17,7 +17,7 @@ const getPosts = async (req, res) => {
     }));
 
     res.json({ success: true, data: formattedPosts });
-  } catch (err) {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch posts' });
   }
 };
@@ -25,6 +25,7 @@ const getPosts = async (req, res) => {
 const addPost = async (req, res) => {
   try {
     const { userName, userMessage } = req.body;
+
     if (!userName || !userMessage) {
       return res
         .status(400)
@@ -33,9 +34,15 @@ const addPost = async (req, res) => {
 
     const newPost = new Post({ userName, userMessage });
     await newPost.save();
-    res.status(201).json({ success: true, data: newPost });
+    res.status(201).json({
+      success: true,
+      data: newPost,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to create post' });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: 'Failed to create post!' });
   }
 };
 
@@ -73,7 +80,10 @@ const addComment = async (req, res) => {
     });
 
     res.status(201).json({ success: true, data: savedComment });
-  } catch (err) {
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: 'Failed to add comment' });
   }
 };

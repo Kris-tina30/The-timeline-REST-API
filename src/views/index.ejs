@@ -5,7 +5,7 @@
     <div>
       <h1>Timeline</h1>
 
-      <form class="form" method="post" action="/add-post">
+      <form class="form" method="post" action="/posts">
         <label for="userName">Post a message</label>
         <input type="text" name="userName" placeholder="userName" />
         <% if (errors && errors.userName) { %>
@@ -28,12 +28,16 @@
           <div class="message-wrap">
             <p class="message"><%= post.userMessage%></p>
 
-            <a href="/delete-post/<%= post._id%>"
+            <a href="/posts/<%= post._id%>"
               ><button class="btn delete-btn">delete</button></a
             >
           </div>
         </div>
-        <form class="form" method="post" action="/add-comment/<%= post._id%>">
+        <form
+          class="form"
+          method="post"
+          action="/posts/<%= post._id %>/comments"
+        >
           <input
             class="input-comment"
             type="text"
